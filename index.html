@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Barcode Scanner</title>
+  <!-- Loads locally from the same folder (no internet/CDN needed) -->
+  <script src="./html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+    #status {
+      margin: 12px 0;
+      padding: 10px;
+      border-radius: 6px;
+      background: #f0f4f8;
+      color: #333;
+      font-size: 14px;
+    }
+    #status.error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    #reader {
+      width: 100%;
+      margin: 15px 0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .input-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+    input {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      padding: 12px 16px;
+      font-size: 16px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Barcode Input Scanner</h2>
+
+  <button id="start-btn">Start Camera</button>
+  <button id="stop-btn" disabled>Stop Camera</button>
+
+  <div id="status">Ready. Click "Start Camera".</div>
+
+  <div id="reader"></div>
+
+  <div class="input-group">
+    <input type="text" id="barcode-input" placeholder="Scanned code will appear here..." />
+    <button onclick="submitCode()">Submit</button>
+  </div>
+
+  <script>
+    const statusBox = document.getElementById("status");
+    const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
+    const barcodeInput = document.getElementById("barcode-input");
+
+    function setStatus(msg, isError = false) {
+      statusBox.textContent = msg;
+      statusBox.className = isError ? "error" : "";
+    }
+
+    if (typeof Html5Qrcode === "undefined") {
+      setStatus("Error: Make sure 'html5-qrcode.min.js' is saved in the exact same folder as this HTML file.", true);
+    }
+
+    const html5QrCode = typeof Html5Qrcode !== "undefined" ? new Html5Qrcode("reader") : null;
+
+    startBtn.addEventListener("click", async () => {
+      if (!html5QrCode) return;
+
+      setStatus("Requesting camera...");
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          (decodedText) => {
+            barcodeInput.value = decodedText;
+            if (navigator.vibrate) navigator.vibrate(100);
+            setStatus("Scanned: " + decodedText);
+            stopScanner();
+          },
+          () => {}
+        );
+        setStatus("Camera active. Point at a barcode.");
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      } catch (err) {
+        setStatus("Camera error: " + err, true);
+      }
+    });
+
+    async function stopScanner() {
+      if (!html5QrCode) return;
+      try {
+        await html5QrCode.stop();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        setStatus("Camera stopped.");
+      } catch (err) {
+        setStatus("Stop error: " + err, true);
+      }
+    }
+
+    stopBtn.addEventListener("click", stopScanner);
+
+    function submitCode() {
+      if (!barcodeInput.value) return setStatus("Scan or enter a code first.", true);
+      alert("Submitted: " + barcodeInput.value);
+    }
+  </script>
+
+</body>
+</html>
